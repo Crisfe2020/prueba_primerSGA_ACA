@@ -1,0 +1,6 @@
+{
+  "name": "SGA - Modelo de Casos de Uso (Sección 6.1)",
+  "description": "Documento de Arquitectura de Software formal: Modelo de Casos de Uso, actores, matriz de especificación, plantillas detalladas UC-05 y UC-06, diagrama Mermaid y trazabilidad RF/RNF para el Sistema de Gestión Académica.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
