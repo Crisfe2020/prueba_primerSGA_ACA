@@ -28,6 +28,7 @@ import {
   Menu,
   X,
   Lock,
+  Database,
 } from 'lucide-react';
 import { authService, SessionUser } from './services/apiService';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
@@ -38,6 +39,7 @@ import { TeacherView } from './components/sga/TeacherView';
 import { CoordinatorView } from './components/sga/CoordinatorView';
 import { AdminView } from './components/sga/AdminView';
 import { AuditView } from './components/sga/AuditView';
+import { SqlDatabaseView } from './components/sga/SqlDatabaseView';
 import { UnauthorizedView } from './components/sga/UnauthorizedView';
 import { LayerInspectorModal } from './components/sga/LayerInspectorModal';
 
@@ -205,6 +207,16 @@ function AppContent() {
                 </div>
               )}
             </div>
+
+            <button
+              onClick={() => navigate('/database')}
+              className="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-300 flex items-center gap-1.5 transition-colors shadow-2xs"
+              title="Explorar Base de Datos Relacional PostgreSQL 16, Tablas en 3FN y Consola SQL"
+            >
+              <Database className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Base de Datos SQL</span>
+              <span className="text-[10px] bg-emerald-600 text-white font-mono px-1.5 py-0.2 rounded font-bold">11 Tablas</span>
+            </button>
 
             <button
               onClick={() => setLayerInspectorOpen(true)}
@@ -436,6 +448,22 @@ function AppContent() {
             />
 
             <Route
+              path="/admin/horarios"
+              element={
+                <ProtectedRoute
+                  session={session}
+                  rolesPermitidos={['COORDINADOR_ACADEMICO', 'ADMINISTRADOR']}
+                >
+                  <CoordinatorView
+                    key={`coord-hor-${systemSyncCount}`}
+                    session={session}
+                    onRefreshData={triggerDataRefresh}
+                  />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
               path="/admin/auditoria"
               element={
                 <ProtectedRoute
@@ -464,6 +492,31 @@ function AppContent() {
                     session={session}
                     onRefreshData={triggerDataRefresh}
                   />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Rutas de la Base de Datos Relacional SQL (PostgreSQL 16) */}
+            <Route
+              path="/admin/database"
+              element={
+                <ProtectedRoute
+                  session={session}
+                  rolesPermitidos={['COORDINADOR_ACADEMICO', 'ADMINISTRADOR']}
+                >
+                  <SqlDatabaseView onRefreshData={triggerDataRefresh} />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/database"
+              element={
+                <ProtectedRoute
+                  session={session}
+                  rolesPermitidos={['ESTUDIANTE', 'DOCENTE', 'COORDINADOR_ACADEMICO', 'ADMINISTRADOR']}
+                >
+                  <SqlDatabaseView onRefreshData={triggerDataRefresh} />
                 </ProtectedRoute>
               }
             />

@@ -19,6 +19,11 @@ import {
   AuditLogEntity,
 } from './dataStore';
 
+import {
+  checkTeacherAndRoomConflicts,
+  performSystemScheduleAudit,
+} from './scheduleUtils';
+
 // Simulación de latencia de red (100ms - 250ms)
 const simulateNetworkLatency = (ms = 150) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -392,6 +397,30 @@ export const adminService = {
       return { success: false, error: 'El cupo debe ser un valor entre 1 y 100.' };
     }
 
+    // Validación de Cruce de Horario para Docente y Aula (RF-06, RNF-07)
+    const existingGroups = db.getGrupos('per-2026-1');
+    const conflict = checkTeacherAndRoomConflicts(
+      docente.id,
+      datos.diasHorario,
+      datos.aulaOEnlace,
+      existingGroups
+    );
+
+    if (conflict.hasConflict) {
+      if (conflict.docenteConflict) {
+        return {
+          success: false,
+          error: `Cruce de horario para el Docente: ${conflict.docenteConflict.reason}`,
+        };
+      }
+      if (conflict.aulaConflict) {
+        return {
+          success: false,
+          error: `Cruce de disponibilidad de Aula: ${conflict.aulaConflict.reason}`,
+        };
+      }
+    }
+
     const nuevo = db.agregarGrupo({
       asignaturaId: asig.id,
       asignaturaCodigo: asig.codigo,
@@ -420,6 +449,12 @@ export const adminService = {
     });
 
     return { success: true, grupo: nuevo };
+  },
+
+  async runScheduleAudit(): Promise<ReturnType<typeof performSystemScheduleAudit>> {
+    await simulateNetworkLatency(200);
+    const grupos = db.getGrupos('per-2026-1');
+    return performSystemScheduleAudit(grupos);
   },
 
   async getUsers(): Promise<UsuarioEntity[]> {

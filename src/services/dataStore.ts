@@ -8,6 +8,8 @@
  * Usuario, Rol, Estudiante, Docente, Programa, Asignatura, PeriodoAcademico, Grupo, Matricula, Calificacion, AuditLog.
  */
 
+import { checkCollisionBetweenSchedules } from './scheduleUtils';
+
 export interface RolEntity {
   id: string;
   nombre: 'ADMINISTRADOR' | 'COORDINADOR_ACADEMICO' | 'DOCENTE' | 'ESTUDIANTE';
@@ -714,6 +716,36 @@ export class DataStore {
         return { success: false, error: `El grupo ${g.numeroGrupo} de ${g.asignaturaNombre} no tiene cupos disponibles (Cupo agotado).` };
       }
       gruposSeleccionados.push(g);
+    }
+
+    // 2.1 Validación estricta de cruce de horarios (RF-07, RNF-07)
+    // a) Verificar colisión entre las asignaturas que intenta matricular al mismo tiempo
+    for (let i = 0; i < gruposSeleccionados.length; i++) {
+      for (let j = i + 1; j < gruposSeleccionados.length; j++) {
+        const col = checkCollisionBetweenSchedules(gruposSeleccionados[i].diasHorario, gruposSeleccionados[j].diasHorario);
+        if (col.hasCollision) {
+          return {
+            success: false,
+            error: `Cruce de horarios detectado: "${gruposSeleccionados[i].asignaturaNombre}" y "${gruposSeleccionados[j].asignaturaNombre}" se cruzan el ${col.conflictingDay} (${col.overlappingHours}).`,
+          };
+        }
+      }
+    }
+
+    // b) Verificar colisión contra las asignaturas ya asentadas en el periodo actual
+    if (existente) {
+      const asignaturasActivas = existente.detalles.filter((d) => d.estado === 'ASENTADA');
+      for (const candidato of gruposSeleccionados) {
+        for (const inscrita of asignaturasActivas) {
+          const col = checkCollisionBetweenSchedules(candidato.diasHorario, inscrita.horario);
+          if (col.hasCollision) {
+            return {
+              success: false,
+              error: `Cruce con materia ya inscrita: "${candidato.asignaturaNombre}" (${candidato.diasHorario}) se traslapa con "${inscrita.asignaturaNombre}" (${inscrita.horario}) el ${col.conflictingDay} (${col.overlappingHours}).`,
+            };
+          }
+        }
+      }
     }
 
     // 3. Decrementar cupos atómicamente

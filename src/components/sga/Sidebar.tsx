@@ -21,6 +21,7 @@ import {
   Users,
   FileCode,
   Lock,
+  Database,
 } from 'lucide-react';
 import { SessionUser } from '../../services/apiService';
 
@@ -150,6 +151,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ session, onOpenLayerInspector 
                 <Award className="w-4 h-4" />
                 <span>Planilla de Calificaciones (RF-08)</span>
               </NavLink>
+
+              <NavLink
+                to="/docente/horario"
+                className={({ isActive }) =>
+                  `flex items-center gap-2.5 p-2.5 rounded-xl transition-colors ${
+                    isActive
+                      ? 'bg-indigo-600 text-white font-bold shadow-xs'
+                      : 'text-slate-700 hover:bg-slate-100'
+                  }`
+                }
+              >
+                <Calendar className="w-4 h-4" />
+                <span>Horario Semanal (Carga)</span>
+              </NavLink>
             </>
           )}
 
@@ -201,6 +216,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ session, onOpenLayerInspector 
               </NavLink>
 
               <NavLink
+                to="/admin/horarios"
+                className={({ isActive }) =>
+                  `flex items-center gap-2.5 p-2.5 rounded-xl transition-colors ${
+                    isActive
+                      ? 'bg-indigo-600 text-white font-bold shadow-xs'
+                      : 'text-slate-700 hover:bg-slate-100'
+                  }`
+                }
+              >
+                <Calendar className="w-4 h-4" />
+                <span>Franjas Horarias & Cruces</span>
+              </NavLink>
+
+              <NavLink
                 to="/admin/auditoria"
                 className={({ isActive }) =>
                   `flex items-center gap-2.5 p-2.5 rounded-xl transition-colors ${
@@ -212,6 +241,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ session, onOpenLayerInspector 
               >
                 <ShieldAlert className="w-4 h-4 text-amber-500" />
                 <span>Auditoría del Sistema (RF-12)</span>
+              </NavLink>
+
+              <NavLink
+                to="/admin/database"
+                className={({ isActive }) =>
+                  `flex items-center gap-2.5 p-2.5 rounded-xl transition-colors ${
+                    isActive
+                      ? 'bg-indigo-600 text-white font-bold shadow-xs'
+                      : 'text-slate-700 hover:bg-slate-100'
+                  }`
+                }
+              >
+                <Database className="w-4 h-4 text-emerald-600" />
+                <span>Base de Datos SQL (3NF)</span>
               </NavLink>
             </>
           )}
@@ -251,6 +294,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ session, onOpenLayerInspector 
               </NavLink>
 
               <NavLink
+                to="/admin/horarios"
+                className={({ isActive }) =>
+                  `flex items-center gap-2.5 p-2.5 rounded-xl transition-colors ${
+                    isActive
+                      ? 'bg-indigo-600 text-white font-bold shadow-xs'
+                      : 'text-slate-700 hover:bg-slate-100'
+                  }`
+                }
+              >
+                <Calendar className="w-4 h-4" />
+                <span>Franjas Horarias & Cruces</span>
+              </NavLink>
+
+              <NavLink
                 to="/admin/auditoria"
                 className={({ isActive }) =>
                   `flex items-center gap-2.5 p-2.5 rounded-xl transition-colors ${
@@ -263,11 +320,25 @@ export const Sidebar: React.FC<SidebarProps> = ({ session, onOpenLayerInspector 
                 <ShieldAlert className="w-4 h-4 text-amber-500" />
                 <span>Bitácora de Auditoría (RF-12)</span>
               </NavLink>
+
+              <NavLink
+                to="/admin/database"
+                className={({ isActive }) =>
+                  `flex items-center gap-2.5 p-2.5 rounded-xl transition-colors ${
+                    isActive
+                      ? 'bg-indigo-600 text-white font-bold shadow-xs'
+                      : 'text-slate-700 hover:bg-slate-100'
+                  }`
+                }
+              >
+                <Database className="w-4 h-4 text-emerald-600" />
+                <span>Base de Datos SQL (PostgreSQL)</span>
+              </NavLink>
             </>
           )}
         </nav>
 
-        {/* Bloque Explicativo de Seguridad RBAC */}
+        {/* Bloque Explicativo de Seguridad RBAC & Acceso a BD */}
         <div className="mt-6 pt-4 border-t border-slate-100 text-slate-600 space-y-2">
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
             Aislamiento de Privilegios
@@ -275,13 +346,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ session, onOpenLayerInspector 
           <p className="text-[11px] leading-relaxed text-slate-500">
             El componente <code>ProtectedRoute</code> intercepta el enrutamiento. Si un estudiante escribe directamente <code>/docente/notas</code> o <code>/admin/usuarios</code>, el sistema bloquea la renderización emitiendo <strong>HTTP 403 Forbidden</strong>.
           </p>
-          <button
-            onClick={onOpenLayerInspector}
-            className="w-full py-2 px-3 bg-slate-900 text-white hover:bg-slate-800 text-[11px] font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5 shadow-2xs"
-          >
-            <Layers className="w-3.5 h-3.5 text-indigo-400" />
-            <span>Ver Arquitectura en Capas</span>
-          </button>
+          <div className="pt-1 flex flex-col gap-2">
+            <NavLink
+              to="/database"
+              className="w-full py-2 px-3 bg-emerald-700 text-white hover:bg-emerald-800 text-[11px] font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5 shadow-2xs"
+            >
+              <Database className="w-3.5 h-3.5 text-emerald-200" />
+              <span>Base de Datos SQL (11 Tablas)</span>
+            </NavLink>
+            <button
+              onClick={onOpenLayerInspector}
+              className="w-full py-2 px-3 bg-slate-900 text-white hover:bg-slate-800 text-[11px] font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5 shadow-2xs"
+            >
+              <Layers className="w-3.5 h-3.5 text-indigo-400" />
+              <span>Ver Arquitectura en Capas</span>
+            </button>
+          </div>
         </div>
       </div>
     </aside>
