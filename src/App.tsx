@@ -1,387 +1,521 @@
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
+ * 
+ * Sistema de Gestión Académica (SGA)
+ * Enrutamiento Principal con Control de Acceso Estricto por Roles (RBAC - RF-02, RNF-01, RNF-11)
  */
 
-import React, { useState } from 'react';
-import { ActorsSection } from './components/ActorsSection';
-import { UseCaseTable } from './components/UseCaseTable';
-import { DetailedTemplates } from './components/DetailedTemplates';
-import { MermaidViewer } from './components/MermaidViewer';
-import { TraceabilityMatrix } from './components/TraceabilityMatrix';
-import { MarkdownDocumentView } from './components/MarkdownDocumentView';
-import { ComponentsView } from './components/ComponentsView';
-import { DeploymentView } from './components/DeploymentView';
-import { DataAndSequenceView } from './components/DataAndSequenceView';
-import { CODIGO_MERMAID_CASOS_DE_USO, DOCUMENTO_MARKDOWN_COMPLETO } from './data/sgaArchitectureData';
-import { DOCUMENTO_MARKDOWN_COMPLETO_6_2 } from './data/sgaComponentsData';
-import { DOCUMENTO_MARKDOWN_COMPLETO_6_3 } from './data/sgaDeploymentData';
-import { DOCUMENTO_MARKDOWN_COMPLETO_6_4_6_6 } from './data/sgaDataAndTraceData';
+import React, { useState, useEffect } from 'react';
 import {
-  Users,
-  TableProperties,
-  FileCheck2,
-  GitBranch,
-  Network,
-  FileText,
-  Download,
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+  useNavigate,
+} from 'react-router-dom';
+import {
+  GraduationCap,
+  BookOpen,
+  Building2,
+  ShieldCheck,
+  ShieldAlert,
+  LogOut,
   Layers,
-  Component,
-  Cloud,
-  Database,
+  ChevronDown,
+  Sparkles,
+  Menu,
+  X,
+  Lock,
 } from 'lucide-react';
+import { authService, SessionUser } from './services/apiService';
+import { ProtectedRoute } from './components/auth/ProtectedRoute';
+import { Sidebar } from './components/sga/Sidebar';
+import { LoginView } from './components/sga/LoginView';
+import { StudentView } from './components/sga/StudentView';
+import { TeacherView } from './components/sga/TeacherView';
+import { CoordinatorView } from './components/sga/CoordinatorView';
+import { AdminView } from './components/sga/AdminView';
+import { AuditView } from './components/sga/AuditView';
+import { UnauthorizedView } from './components/sga/UnauthorizedView';
+import { LayerInspectorModal } from './components/sga/LayerInspectorModal';
 
-type ArchitectureSection = 'sec_6_1' | 'sec_6_2' | 'sec_6_3' | 'sec_6_4_6_6';
-type NavTab = 'actores' | 'casos_de_uso' | 'plantillas' | 'diagrama' | 'trazabilidad' | 'documento';
+function AppContent() {
+  const [session, setSession] = useState<SessionUser | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [layerInspectorOpen, setLayerInspectorOpen] = useState(false);
+  const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
+  const [systemSyncCount, setSystemSyncCount] = useState(0);
 
-export default function App() {
-  const [activeSection, setActiveSection] = useState<ArchitectureSection>('sec_6_4_6_6');
-  const [activeTab, setActiveTab] = useState<NavTab>('actores');
-  const [selectedCriticalUc, setSelectedCriticalUc] = useState<'UC-05' | 'UC-06'>('UC-05');
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  const handleSelectUseCaseFromTable = (ucId: string) => {
-    if (ucId === 'UC-05' || ucId === 'UC-06') {
-      setSelectedCriticalUc(ucId);
-      setActiveTab('plantillas');
-      setActiveSection('sec_6_1');
+  // Inicializar sesión por defecto como Estudiante (Sofía Morales) para interactividad inmediata
+  useEffect(() => {
+    const initDefault = async () => {
+      const res = await authService.login('ESTUDIANTE');
+      if (res.success && res.session) {
+        setSession(res.session);
+      }
+    };
+    initDefault();
+  }, []);
+
+  const handleRoleSwitch = async (roleName: string, defaultPath: string) => {
+    setRoleDropdownOpen(false);
+    setMobileMenuOpen(false);
+    const res = await authService.login(roleName);
+    if (res.success && res.session) {
+      setSession(res.session);
+      navigate(defaultPath);
     }
   };
 
-  const handleDownloadActiveDoc = () => {
-    let content = DOCUMENTO_MARKDOWN_COMPLETO_6_4_6_6;
-    let filename = 'SGA_Secciones_6.4_6.5_6.6_Datos_Secuencia_Trazabilidad.md';
-
-    if (activeSection === 'sec_6_3') {
-      content = DOCUMENTO_MARKDOWN_COMPLETO_6_3;
-      filename = 'SGA_Seccion_6.3_Modelo_Despliegue_Cloud.md';
-    } else if (activeSection === 'sec_6_2') {
-      content = DOCUMENTO_MARKDOWN_COMPLETO_6_2;
-      filename = 'SGA_Seccion_6.2_Vista_Componentes.md';
-    } else if (activeSection === 'sec_6_1') {
-      content = DOCUMENTO_MARKDOWN_COMPLETO;
-      filename = 'SGA_Seccion_6.1_Modelo_Casos_de_Uso.md';
+  const handleLogout = async () => {
+    if (session) {
+      await authService.logout(session.usuario);
     }
-
-    const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    setSession(null);
+    setRoleDropdownOpen(false);
+    setMobileMenuOpen(false);
+    navigate('/login');
   };
+
+  const triggerDataRefresh = () => {
+    setSystemSyncCount((c) => c + 1);
+  };
+
+  // Si no está autenticado y está en /login
+  if (!session && location.pathname === '/login') {
+    return (
+      <LoginView
+        onLoginSuccess={(sess) => {
+          setSession(sess);
+          if (sess.usuario.rolNombre === 'ESTUDIANTE') navigate('/estudiante');
+          else if (sess.usuario.rolNombre === 'DOCENTE') navigate('/docente');
+          else navigate('/admin');
+        }}
+      />
+    );
+  }
+
+  // Si aún no carga la sesión inicial
+  if (!session) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white text-xs font-mono">
+        Iniciando contexto de seguridad SGA...
+      </div>
+    );
+  }
+
+  const user = session.usuario;
 
   return (
-    <div className="min-h-screen bg-slate-100/70 text-slate-900 flex flex-col font-sans">
-      {/* Top Bar Contract: Exactly 3 Zones */}
+    <div className="min-h-screen bg-slate-100/80 text-slate-900 flex flex-col font-sans">
+      {/* ========================================================================= */}
+      {/* TOP BAR INSTITUCIONAL                                                     */}
+      {/* ========================================================================= */}
       <header className="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-2xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-8">
-          {/* Zone 1: Single text element wordmark */}
-          <div className="flex items-center gap-3 shrink-0">
-            <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center font-bold text-sm tracking-wider shadow-xs">
-              SGA
-            </div>
-            <a
-              href="#home"
-              onClick={(e) => {
-                e.preventDefault();
-                setActiveSection('sec_6_4_6_6');
-              }}
-              className="text-base font-bold tracking-tight text-slate-900 whitespace-nowrap shrink-0 hover:text-indigo-900 transition-colors"
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+          {/* Zona 1: Logo Institucional */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="lg:hidden p-2 rounded-lg text-slate-600 hover:bg-slate-100"
             >
-              Arquitectura SGA
-            </a>
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+            <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-black text-base shadow-xs">
+              <GraduationCap className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-base font-extrabold tracking-tight text-slate-900">
+                  SGA · Campus Digital
+                </span>
+                <span className="hidden sm:inline-block text-[10px] bg-slate-100 text-slate-700 font-mono font-bold px-1.5 py-0.5 rounded border border-slate-200">
+                  RBAC Activo (RF-02)
+                </span>
+              </div>
+              <span className="text-[11px] text-slate-500 hidden sm:block">
+                Periodo Académico 2026-1 · En Línea
+              </span>
+            </div>
           </div>
 
-          {/* Zone 2: Section Switcher & concise navigation links */}
-          <nav className="hidden lg:flex items-center gap-2 text-xs font-semibold">
-            {/* Macro Section Switcher */}
-            <div className="inline-flex rounded-lg p-1 bg-slate-200/80 mr-2">
+          {/* Zona 2: Selector Rápido de Roles para Pruebas RBAC */}
+          <div className="hidden md:flex items-center gap-2">
+            <div className="relative">
               <button
-                onClick={() => setActiveSection('sec_6_4_6_6')}
-                className={`px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5 ${
-                  activeSection === 'sec_6_4_6_6'
-                    ? 'bg-white text-slate-900 shadow-xs font-bold'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
+                onClick={() => setRoleDropdownOpen(!roleDropdownOpen)}
+                className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 flex items-center gap-2 transition-colors"
+                title="Cambiar perfil activo para probar restricción de rutas"
               >
-                <Database className="w-3.5 h-3.5 text-emerald-700" />
-                <span>6.4-6.6: Datos &amp; Trazabilidad</span>
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                <span>Rol Activo: <strong className="text-indigo-950">{user.rolNombre}</strong></span>
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
               </button>
-              <button
-                onClick={() => setActiveSection('sec_6_3')}
-                className={`px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5 ${
-                  activeSection === 'sec_6_3'
-                    ? 'bg-white text-slate-900 shadow-xs font-bold'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <Cloud className="w-3.5 h-3.5 text-sky-700" />
-                <span>6.3: Despliegue Cloud</span>
-              </button>
-              <button
-                onClick={() => setActiveSection('sec_6_2')}
-                className={`px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5 ${
-                  activeSection === 'sec_6_2'
-                    ? 'bg-white text-slate-900 shadow-xs font-bold'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <Component className="w-3.5 h-3.5 text-indigo-700" />
-                <span>6.2: Componentes N-Tier</span>
-              </button>
-              <button
-                onClick={() => setActiveSection('sec_6_1')}
-                className={`px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5 ${
-                  activeSection === 'sec_6_1'
-                    ? 'bg-white text-slate-900 shadow-xs font-bold'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <Layers className="w-3.5 h-3.5 text-slate-600" />
-                <span>6.1: Casos de Uso</span>
-              </button>
+
+              {roleDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 animate-scaleUp">
+                  <div className="px-3 py-1.5 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    Simular Persona y Probar RBAC
+                  </div>
+                  <button
+                    onClick={() => handleRoleSwitch('ESTUDIANTE', '/estudiante')}
+                    className="w-full text-left px-3 py-2 text-xs hover:bg-slate-50 flex items-center gap-2 text-slate-800 font-semibold"
+                  >
+                    <GraduationCap className="w-4 h-4 text-emerald-600" />
+                    <div>
+                      <div className="text-xs font-bold">Estudiante</div>
+                      <div className="text-[10px] text-slate-500 font-normal">Sofía Morales (Solo /estudiante/*)</div>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => handleRoleSwitch('DOCENTE', '/docente')}
+                    className="w-full text-left px-3 py-2 text-xs hover:bg-slate-50 flex items-center gap-2 text-slate-800 font-semibold"
+                  >
+                    <BookOpen className="w-4 h-4 text-blue-600" />
+                    <div>
+                      <div className="text-xs font-bold">Docente</div>
+                      <div className="text-[10px] text-slate-500 font-normal">Dr. Carlos Mendivelso (Solo /docente/*)</div>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => handleRoleSwitch('COORDINADOR_ACADEMICO', '/admin')}
+                    className="w-full text-left px-3 py-2 text-xs hover:bg-slate-50 flex items-center gap-2 text-slate-800 font-semibold"
+                  >
+                    <Building2 className="w-4 h-4 text-amber-600" />
+                    <div>
+                      <div className="text-xs font-bold">Coordinador Académico</div>
+                      <div className="text-[10px] text-slate-500 font-normal">Ing. Andrés Valenzuela (/admin/*)</div>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => handleRoleSwitch('ADMINISTRADOR', '/admin')}
+                    className="w-full text-left px-3 py-2 text-xs hover:bg-slate-50 flex items-center gap-2 text-slate-800 font-semibold"
+                  >
+                    <ShieldCheck className="w-4 h-4 text-purple-600" />
+                    <div>
+                      <div className="text-xs font-bold">Administrador del Sistema</div>
+                      <div className="text-[10px] text-slate-500 font-normal">Mg. Elena Rojas (Acceso Total)</div>
+                    </div>
+                  </button>
+                </div>
+              )}
             </div>
 
-            {/* 6.1 Sub-links if 6.1 is active */}
-            {activeSection === 'sec_6_1' && (
-              <div className="flex items-center gap-1 text-slate-600">
-                <button
-                  onClick={() => setActiveTab('actores')}
-                  className={`px-2 py-1 rounded-md whitespace-nowrap shrink-0 transition-colors ${
-                    activeTab === 'actores' ? 'bg-slate-100 text-slate-950 font-bold' : 'hover:bg-slate-50'
-                  }`}
-                >
-                  Actores
-                </button>
-                <button
-                  onClick={() => setActiveTab('casos_de_uso')}
-                  className={`px-2 py-1 rounded-md whitespace-nowrap shrink-0 transition-colors ${
-                    activeTab === 'casos_de_uso' ? 'bg-slate-100 text-slate-950 font-bold' : 'hover:bg-slate-50'
-                  }`}
-                >
-                  Casos de Uso
-                </button>
-                <button
-                  onClick={() => setActiveTab('plantillas')}
-                  className={`px-2 py-1 rounded-md whitespace-nowrap shrink-0 transition-colors ${
-                    activeTab === 'plantillas' ? 'bg-slate-100 text-slate-950 font-bold' : 'hover:bg-slate-50'
-                  }`}
-                >
-                  UC-05/06
-                </button>
-                <button
-                  onClick={() => setActiveTab('diagrama')}
-                  className={`px-2 py-1 rounded-md whitespace-nowrap shrink-0 transition-colors ${
-                    activeTab === 'diagrama' ? 'bg-slate-100 text-slate-950 font-bold' : 'hover:bg-slate-50'
-                  }`}
-                >
-                  Mermaid 6.1
-                </button>
-                <button
-                  onClick={() => setActiveTab('trazabilidad')}
-                  className={`px-2 py-1 rounded-md whitespace-nowrap shrink-0 transition-colors ${
-                    activeTab === 'trazabilidad' ? 'bg-slate-100 text-slate-950 font-bold' : 'hover:bg-slate-50'
-                  }`}
-                >
-                  Trazabilidad
-                </button>
-              </div>
-            )}
-          </nav>
-
-          {/* Zone 3: 1 primary action */}
-          <div className="flex items-center gap-2 shrink-0">
             <button
-              onClick={handleDownloadActiveDoc}
-              className="px-3.5 py-1.5 text-xs font-semibold text-white bg-slate-900 rounded-lg hover:bg-slate-800 transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5 shadow-2xs"
+              onClick={() => setLayerInspectorOpen(true)}
+              className="px-3 py-1.5 rounded-lg text-xs font-bold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 flex items-center gap-1.5 transition-colors"
             >
-              <Download className="w-3.5 h-3.5" />
-              <span>
-                {activeSection === 'sec_6_4_6_6'
-                  ? 'Descargar 6.4-6.6 (.md)'
-                  : activeSection === 'sec_6_3'
-                  ? 'Descargar 6.3 (.md)'
-                  : activeSection === 'sec_6_2'
-                  ? 'Descargar 6.2 (.md)'
-                  : 'Descargar 6.1 (.md)'}
-              </span>
+              <Layers className="w-3.5 h-3.5 text-indigo-600" />
+              <span>Arquitectura en Capas</span>
+            </button>
+          </div>
+
+          {/* Zona 3: Info Usuario & Logout */}
+          <div className="flex items-center gap-3">
+            <div className="hidden sm:flex items-center gap-2.5 text-right">
+              <div>
+                <span className="text-xs font-bold text-slate-900 block leading-tight">
+                  {user.nombreCompleto}
+                </span>
+                <span className="text-[10px] text-slate-500 font-mono">
+                  {user.email}
+                </span>
+              </div>
+              <img
+                src={user.avatarUrl}
+                alt={user.nombreCompleto}
+                className="w-9 h-9 rounded-full object-cover border border-slate-200"
+              />
+            </div>
+
+            <button
+              onClick={handleLogout}
+              className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              title="Cerrar sesión segura"
+            >
+              <LogOut className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        {/* Mobile Sub-Navigation Bar */}
-        <div className="lg:hidden border-t border-slate-200 px-4 py-2 bg-slate-50 flex items-center gap-2 overflow-x-auto text-xs font-medium">
-          <button
-            onClick={() => setActiveSection('sec_6_4_6_6')}
-            className={`px-2.5 py-1 rounded whitespace-nowrap ${
-              activeSection === 'sec_6_4_6_6' ? 'bg-slate-900 text-white' : 'text-slate-600'
-            }`}
-          >
-            6.4-6.6 (Datos &amp; Trazabilidad)
-          </button>
-          <button
-            onClick={() => setActiveSection('sec_6_3')}
-            className={`px-2.5 py-1 rounded whitespace-nowrap ${
-              activeSection === 'sec_6_3' ? 'bg-slate-900 text-white' : 'text-slate-600'
-            }`}
-          >
-            6.3 (Despliegue Cloud)
-          </button>
-          <button
-            onClick={() => setActiveSection('sec_6_2')}
-            className={`px-2.5 py-1 rounded whitespace-nowrap ${
-              activeSection === 'sec_6_2' ? 'bg-slate-900 text-white' : 'text-slate-600'
-            }`}
-          >
-            6.2 (Componentes N-Tier)
-          </button>
-          <button
-            onClick={() => setActiveSection('sec_6_1')}
-            className={`px-2.5 py-1 rounded whitespace-nowrap ${
-              activeSection === 'sec_6_1' ? 'bg-slate-900 text-white' : 'text-slate-600'
-            }`}
-          >
-            6.1 (Casos de Uso)
-          </button>
-        </div>
-      </header>
-
-      {/* Hero Strip / Contextual Breadcrumb Banner */}
-      <section className="bg-white border-b border-slate-200 py-6">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2 text-xs text-slate-500 font-mono mb-1">
-                <span>PROYECTO SGA</span>
-                <span aria-hidden="true">/</span>
-                <span>ARQUITECTURA DE SOFTWARE</span>
-                <span aria-hidden="true">/</span>
-                <span className="text-indigo-700 font-semibold uppercase">
-                  {activeSection === 'sec_6_4_6_6'
-                    ? 'SECCIONES 6.4, 6.5 & 6.6: DATOS, SECUENCIA Y TRAZABILIDAD'
-                    : activeSection === 'sec_6_3'
-                    ? 'SECCIÓN 6.3: MODELO DE DESPLIEGUE CLOUD (N-TIER)'
-                    : activeSection === 'sec_6_2'
-                    ? 'SECCIÓN 6.2: VISTA DE COMPONENTES (N-TIER)'
-                    : 'SECCIÓN 6.1: CASOS DE USO'}
-                </span>
-              </div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-                {activeSection === 'sec_6_4_6_6'
-                  ? 'Modelo de Datos, Secuencia Transaccional y Matriz de Trazabilidad'
-                  : activeSection === 'sec_6_3'
-                  ? 'Modelo de Despliegue en Infraestructura Cloud'
-                  : activeSection === 'sec_6_2'
-                  ? 'Vista Lógica y de Componentes (Arquitectura en Capas)'
-                  : 'Modelo de Casos de Uso del SGA'}
-              </h1>
-              <p className="text-xs sm:text-sm text-slate-600 mt-1 max-w-2xl leading-relaxed">
-                {activeSection === 'sec_6_4_6_6'
-                  ? 'Diccionario de 11 entidades en 3FN, flujo de secuencia ACID para matrícula académica con bloqueo pesimista de cupo (SELECT ... FOR UPDATE) y matriz de cobertura 100% de requisitos funcionales (RF) y no funcionales (RNF).'
-                  : activeSection === 'sec_6_3'
-                  ? 'Mapeo estricto de la Arquitectura en Capas hacia nodos físicos/cloud aislados en subredes privadas. RNF-01 (Seguridad), RNF-02 (Rendimiento 300 concurr. < 3s), RNF-03 (Disponibilidad 99.5% Multi-AZ), RNF-04 (Escalabilidad) y RNF-09 (Respaldo Off-Site).'
-                  : activeSection === 'sec_6_2'
-                  ? 'Descomposición formal en 5 capas: Presentación, Controladores API, Lógica de Negocio, Acceso a Datos y Servicios Transversales. Orquestación ACID para Matrícula (RF-07), Notas (RF-08), RBAC (RF-02) y Auditoría (RF-12).'
-                  : 'Especificación técnica formal basada en estándares IEEE 830 / ISO 29148. Modela los 4 actores institucionales, 12 casos de uso y plantillas profundas.'}
-              </p>
+        {/* Mobile Submenu */}
+        {mobileMenuOpen && (
+          <div className="lg:hidden border-t border-slate-200 px-4 py-3 bg-white space-y-2 text-xs font-bold">
+            <div className="text-slate-500 text-[11px]">
+              Rol activo: <span className="font-bold text-slate-900">{user.rolNombre}</span>
             </div>
-
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs">
-                <span className="text-slate-400 block text-[11px] font-semibold">
-                  {activeSection === 'sec_6_4_6_6'
-                    ? 'Entidades Normalizadas'
-                    : activeSection === 'sec_6_3'
-                    ? 'Topología de Red'
-                    : 'Estilo Arquitectónico'}
-                </span>
-                <span className="font-bold text-slate-900 font-mono">
-                  {activeSection === 'sec_6_4_6_6'
-                    ? '11 Tablas 3FN (PostgreSQL)'
-                    : activeSection === 'sec_6_3'
-                    ? 'VPC Multi-Subnet Multi-AZ'
-                    : 'N-Tier / Clean Architecture'}
-                </span>
-              </div>
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs">
-                <span className="text-slate-400 block text-[11px] font-semibold">
-                  {activeSection === 'sec_6_4_6_6' ? 'Trazabilidad Total' : 'Continuidad &amp; SLA'}
-                </span>
-                <span className="font-bold text-slate-900 font-mono">
-                  {activeSection === 'sec_6_4_6_6'
-                    ? '24 / 24 Requerimientos (100%)'
-                    : activeSection === 'sec_6_3'
-                    ? 'RPO <= 1h · RTO <= 4h (99.5%)'
-                    : 'p95 <= 3.0s (300 concurr.)'}
-                </span>
-              </div>
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <button
+                onClick={() => handleRoleSwitch('ESTUDIANTE', '/estudiante')}
+                className="p-2 bg-slate-50 rounded-lg text-left"
+              >
+                🎓 Estudiante
+              </button>
+              <button
+                onClick={() => handleRoleSwitch('DOCENTE', '/docente')}
+                className="p-2 bg-slate-50 rounded-lg text-left"
+              >
+                👨‍🏫 Docente
+              </button>
+              <button
+                onClick={() => handleRoleSwitch('COORDINADOR_ACADEMICO', '/admin')}
+                className="p-2 bg-slate-50 rounded-lg text-left"
+              >
+                📋 Coordinador
+              </button>
+              <button
+                onClick={() => handleRoleSwitch('ADMINISTRADOR', '/admin')}
+                className="p-2 bg-slate-50 rounded-lg text-left"
+              >
+                🛡️ Administrador
+              </button>
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* Main Content Viewport */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full">
-        {activeSection === 'sec_6_4_6_6' ? (
-          <DataAndSequenceView />
-        ) : activeSection === 'sec_6_3' ? (
-          <DeploymentView />
-        ) : activeSection === 'sec_6_2' ? (
-          <ComponentsView />
-        ) : (
-          <>
-            {activeTab === 'actores' && <ActorsSection />}
-
-            {activeTab === 'casos_de_uso' && (
-              <UseCaseTable onSelectUseCase={handleSelectUseCaseFromTable} />
-            )}
-
-            {activeTab === 'plantillas' && (
-              <DetailedTemplates initialUcId={selectedCriticalUc} />
-            )}
-
-            {activeTab === 'diagrama' && (
-              <div className="space-y-6">
-                <div className="border-b border-slate-200 pb-5">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-indigo-700 tracking-wider uppercase mb-1">
-                    <span>Sección 6.1.4</span>
-                    <span aria-hidden="true">·</span>
-                    <span>Modelo Visual UML</span>
-                  </div>
-                  <h2 className="text-2xl font-bold tracking-tight text-slate-900">
-                    Diagrama de Casos de Uso del SGA (Mermaid.js)
-                  </h2>
-                </div>
-
-                <MermaidViewer code={CODIGO_MERMAID_CASOS_DE_USO} />
-              </div>
-            )}
-
-            {activeTab === 'trazabilidad' && <TraceabilityMatrix />}
-
-            {activeTab === 'documento' && <MarkdownDocumentView />}
-          </>
         )}
-      </main>
+      </header>
 
-      {/* Footer */}
-      <footer className="bg-white border-t border-slate-200 py-6 text-xs text-slate-500">
+      {/* ========================================================================= */}
+      {/* CUERPO PRINCIPAL: SIDEBAR CONDICIONAL + RUTAS PROTEGIDAS                   */}
+      {/* ========================================================================= */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full flex-1 flex flex-col lg:flex-row gap-6">
+        {/* Sidebar con Renderizado Condicional Estricto por Rol */}
+        <Sidebar
+          session={session}
+          onOpenLayerInspector={() => setLayerInspectorOpen(true)}
+        />
+
+        {/* Contenedor de Vistas Enrutadas */}
+        <main className="flex-1 min-w-0">
+          <Routes>
+            {/* Redirección Inicial Inteligente según el Rol */}
+            <Route
+              path="/"
+              element={
+                <Navigate
+                  to={
+                    user.rolNombre === 'ESTUDIANTE'
+                      ? '/estudiante'
+                      : user.rolNombre === 'DOCENTE'
+                      ? '/docente'
+                      : '/admin'
+                  }
+                  replace
+                />
+              }
+            />
+
+            {/* ================================================================= */}
+            {/* 1. RUTAS PROTEGIDAS PARA ESTUDIANTE (/estudiante/*)               */}
+            {/* Solo accesibles por ESTUDIANTE. Bloquea a Docentes y Admins.     */}
+            {/* ================================================================= */}
+            <Route
+              path="/estudiante/*"
+              element={
+                <ProtectedRoute session={session} rolesPermitidos={['ESTUDIANTE']}>
+                  <StudentView
+                    key={`est-${systemSyncCount}`}
+                    session={session}
+                    onRefreshData={triggerDataRefresh}
+                  />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* ================================================================= */}
+            {/* 2. RUTAS PROTEGIDAS PARA DOCENTE (/docente/*)                     */}
+            {/* Solo accesibles por DOCENTES y personal autorizado.               */}
+            {/* Si un ESTUDIANTE ingresa aquí, ProtectedRoute emite HTTP 403.     */}
+            {/* ================================================================= */}
+            <Route
+              path="/docente/*"
+              element={
+                <ProtectedRoute
+                  session={session}
+                  rolesPermitidos={['DOCENTE', 'COORDINADOR_ACADEMICO', 'ADMINISTRADOR']}
+                >
+                  <TeacherView
+                    key={`doc-${systemSyncCount}`}
+                    session={session}
+                    onRefreshData={triggerDataRefresh}
+                  />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* ================================================================= */}
+            {/* 3. RUTAS PROTEGIDAS PARA ADMINISTRACIÓN Y COORDINACIÓN            */}
+            {/* ================================================================= */}
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute
+                  session={session}
+                  rolesPermitidos={['COORDINADOR_ACADEMICO', 'ADMINISTRADOR']}
+                >
+                  {user.rolNombre === 'ADMINISTRADOR' ? (
+                    <AdminView
+                      key={`admin-${systemSyncCount}`}
+                      session={session}
+                      onRefreshData={triggerDataRefresh}
+                    />
+                  ) : (
+                    <CoordinatorView
+                      key={`coord-${systemSyncCount}`}
+                      session={session}
+                      onRefreshData={triggerDataRefresh}
+                    />
+                  )}
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/admin/usuarios"
+              element={
+                <ProtectedRoute session={session} rolesPermitidos={['ADMINISTRADOR']}>
+                  <AdminView
+                    key={`admin-usr-${systemSyncCount}`}
+                    session={session}
+                    onRefreshData={triggerDataRefresh}
+                  />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/admin/oferta"
+              element={
+                <ProtectedRoute
+                  session={session}
+                  rolesPermitidos={['COORDINADOR_ACADEMICO', 'ADMINISTRADOR']}
+                >
+                  <CoordinatorView
+                    key={`coord-of-${systemSyncCount}`}
+                    session={session}
+                    onRefreshData={triggerDataRefresh}
+                  />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/admin/asignaturas"
+              element={
+                <ProtectedRoute
+                  session={session}
+                  rolesPermitidos={['COORDINADOR_ACADEMICO', 'ADMINISTRADOR']}
+                >
+                  <CoordinatorView
+                    key={`coord-asig-${systemSyncCount}`}
+                    session={session}
+                    onRefreshData={triggerDataRefresh}
+                  />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/admin/grupos"
+              element={
+                <ProtectedRoute
+                  session={session}
+                  rolesPermitidos={['COORDINADOR_ACADEMICO', 'ADMINISTRADOR']}
+                >
+                  <CoordinatorView
+                    key={`coord-grp-${systemSyncCount}`}
+                    session={session}
+                    onRefreshData={triggerDataRefresh}
+                  />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/admin/auditoria"
+              element={
+                <ProtectedRoute
+                  session={session}
+                  rolesPermitidos={['COORDINADOR_ACADEMICO', 'ADMINISTRADOR']}
+                >
+                  <AuditView
+                    key={`audit-adm-${systemSyncCount}`}
+                    session={session}
+                    onRefreshData={triggerDataRefresh}
+                  />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Ruta explícita para la Bitácora de Auditoría */}
+            <Route
+              path="/auditoria"
+              element={
+                <ProtectedRoute
+                  session={session}
+                  rolesPermitidos={['COORDINADOR_ACADEMICO', 'ADMINISTRADOR']}
+                >
+                  <AuditView
+                    key={`audit-${systemSyncCount}`}
+                    session={session}
+                    onRefreshData={triggerDataRefresh}
+                  />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Pantalla Formal de Error 403 Forbidden */}
+            <Route
+              path="/unauthorized"
+              element={
+                <UnauthorizedView
+                  rolActual={user.rolNombre}
+                  rolesRequeridos={['ROL_AUTORIZADO']}
+                />
+              }
+            />
+
+            {/* Fallback de Rutas no encontradas */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </main>
+      </div>
+
+      {/* Modal Inspector de Arquitectura N-Tier */}
+      <LayerInspectorModal
+        isOpen={layerInspectorOpen}
+        onClose={() => setLayerInspectorOpen(false)}
+      />
+
+      {/* Footer Institucional */}
+      <footer className="bg-white border-t border-slate-200 py-5 text-xs text-slate-500 mt-auto">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <span className="font-bold text-slate-800">Sistema de Gestión Académica (SGA)</span>
-            <span aria-hidden="true">·</span>
-            <span>Documento de Arquitectura de Software (Secciones 6.1 a 6.6)</span>
-            <span aria-hidden="true">·</span>
-            <span>Versión 3.0</span>
+            <span>·</span>
+            <span>Control de Acceso Basado en Roles (RBAC)</span>
+            <span>·</span>
+            <span className="font-mono text-[11px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+              RF-02 / RNF-01 / RNF-11 Cumplidos
+            </span>
           </div>
           <div className="text-slate-400 text-[11px] font-mono">
-            Conforme a ISO/IEC/IEEE 42010:2011 &amp; IEEE Std 1016-2009
+            ProtectedRoute Activo · Middleware restringirA() en Backend
           </div>
         </div>
       </footer>
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AppContent />
+    </BrowserRouter>
   );
 }
