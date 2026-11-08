@@ -12,9 +12,11 @@ import { TraceabilityMatrix } from './components/TraceabilityMatrix';
 import { MarkdownDocumentView } from './components/MarkdownDocumentView';
 import { ComponentsView } from './components/ComponentsView';
 import { DeploymentView } from './components/DeploymentView';
+import { DataAndSequenceView } from './components/DataAndSequenceView';
 import { CODIGO_MERMAID_CASOS_DE_USO, DOCUMENTO_MARKDOWN_COMPLETO } from './data/sgaArchitectureData';
 import { DOCUMENTO_MARKDOWN_COMPLETO_6_2 } from './data/sgaComponentsData';
 import { DOCUMENTO_MARKDOWN_COMPLETO_6_3 } from './data/sgaDeploymentData';
+import { DOCUMENTO_MARKDOWN_COMPLETO_6_4_6_6 } from './data/sgaDataAndTraceData';
 import {
   Users,
   TableProperties,
@@ -26,13 +28,14 @@ import {
   Layers,
   Component,
   Cloud,
+  Database,
 } from 'lucide-react';
 
-type ArchitectureSection = 'sec_6_1' | 'sec_6_2' | 'sec_6_3';
+type ArchitectureSection = 'sec_6_1' | 'sec_6_2' | 'sec_6_3' | 'sec_6_4_6_6';
 type NavTab = 'actores' | 'casos_de_uso' | 'plantillas' | 'diagrama' | 'trazabilidad' | 'documento';
 
 export default function App() {
-  const [activeSection, setActiveSection] = useState<ArchitectureSection>('sec_6_3');
+  const [activeSection, setActiveSection] = useState<ArchitectureSection>('sec_6_4_6_6');
   const [activeTab, setActiveTab] = useState<NavTab>('actores');
   const [selectedCriticalUc, setSelectedCriticalUc] = useState<'UC-05' | 'UC-06'>('UC-05');
 
@@ -45,15 +48,18 @@ export default function App() {
   };
 
   const handleDownloadActiveDoc = () => {
-    let content = DOCUMENTO_MARKDOWN_COMPLETO_6_3;
-    let filename = 'SGA_Seccion_6.3_Modelo_Despliegue_Cloud.md';
+    let content = DOCUMENTO_MARKDOWN_COMPLETO_6_4_6_6;
+    let filename = 'SGA_Secciones_6.4_6.5_6.6_Datos_Secuencia_Trazabilidad.md';
 
-    if (activeSection === 'sec_6_1') {
-      content = DOCUMENTO_MARKDOWN_COMPLETO;
-      filename = 'SGA_Seccion_6.1_Modelo_Casos_de_Uso.md';
+    if (activeSection === 'sec_6_3') {
+      content = DOCUMENTO_MARKDOWN_COMPLETO_6_3;
+      filename = 'SGA_Seccion_6.3_Modelo_Despliegue_Cloud.md';
     } else if (activeSection === 'sec_6_2') {
       content = DOCUMENTO_MARKDOWN_COMPLETO_6_2;
       filename = 'SGA_Seccion_6.2_Vista_Componentes.md';
+    } else if (activeSection === 'sec_6_1') {
+      content = DOCUMENTO_MARKDOWN_COMPLETO;
+      filename = 'SGA_Seccion_6.1_Modelo_Casos_de_Uso.md';
     }
 
     const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
@@ -81,7 +87,7 @@ export default function App() {
               href="#home"
               onClick={(e) => {
                 e.preventDefault();
-                setActiveSection('sec_6_3');
+                setActiveSection('sec_6_4_6_6');
               }}
               className="text-base font-bold tracking-tight text-slate-900 whitespace-nowrap shrink-0 hover:text-indigo-900 transition-colors"
             >
@@ -93,6 +99,17 @@ export default function App() {
           <nav className="hidden lg:flex items-center gap-2 text-xs font-semibold">
             {/* Macro Section Switcher */}
             <div className="inline-flex rounded-lg p-1 bg-slate-200/80 mr-2">
+              <button
+                onClick={() => setActiveSection('sec_6_4_6_6')}
+                className={`px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5 ${
+                  activeSection === 'sec_6_4_6_6'
+                    ? 'bg-white text-slate-900 shadow-xs font-bold'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Database className="w-3.5 h-3.5 text-emerald-700" />
+                <span>6.4-6.6: Datos &amp; Trazabilidad</span>
+              </button>
               <button
                 onClick={() => setActiveSection('sec_6_3')}
                 className={`px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5 ${
@@ -183,7 +200,9 @@ export default function App() {
             >
               <Download className="w-3.5 h-3.5" />
               <span>
-                {activeSection === 'sec_6_3'
+                {activeSection === 'sec_6_4_6_6'
+                  ? 'Descargar 6.4-6.6 (.md)'
+                  : activeSection === 'sec_6_3'
                   ? 'Descargar 6.3 (.md)'
                   : activeSection === 'sec_6_2'
                   ? 'Descargar 6.2 (.md)'
@@ -195,6 +214,14 @@ export default function App() {
 
         {/* Mobile Sub-Navigation Bar */}
         <div className="lg:hidden border-t border-slate-200 px-4 py-2 bg-slate-50 flex items-center gap-2 overflow-x-auto text-xs font-medium">
+          <button
+            onClick={() => setActiveSection('sec_6_4_6_6')}
+            className={`px-2.5 py-1 rounded whitespace-nowrap ${
+              activeSection === 'sec_6_4_6_6' ? 'bg-slate-900 text-white' : 'text-slate-600'
+            }`}
+          >
+            6.4-6.6 (Datos &amp; Trazabilidad)
+          </button>
           <button
             onClick={() => setActiveSection('sec_6_3')}
             className={`px-2.5 py-1 rounded whitespace-nowrap ${
@@ -233,7 +260,9 @@ export default function App() {
                 <span>ARQUITECTURA DE SOFTWARE</span>
                 <span aria-hidden="true">/</span>
                 <span className="text-indigo-700 font-semibold uppercase">
-                  {activeSection === 'sec_6_3'
+                  {activeSection === 'sec_6_4_6_6'
+                    ? 'SECCIONES 6.4, 6.5 & 6.6: DATOS, SECUENCIA Y TRAZABILIDAD'
+                    : activeSection === 'sec_6_3'
                     ? 'SECCIÓN 6.3: MODELO DE DESPLIEGUE CLOUD (N-TIER)'
                     : activeSection === 'sec_6_2'
                     ? 'SECCIÓN 6.2: VISTA DE COMPONENTES (N-TIER)'
@@ -241,14 +270,18 @@ export default function App() {
                 </span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-                {activeSection === 'sec_6_3'
+                {activeSection === 'sec_6_4_6_6'
+                  ? 'Modelo de Datos, Secuencia Transaccional y Matriz de Trazabilidad'
+                  : activeSection === 'sec_6_3'
                   ? 'Modelo de Despliegue en Infraestructura Cloud'
                   : activeSection === 'sec_6_2'
                   ? 'Vista Lógica y de Componentes (Arquitectura en Capas)'
                   : 'Modelo de Casos de Uso del SGA'}
               </h1>
               <p className="text-xs sm:text-sm text-slate-600 mt-1 max-w-2xl leading-relaxed">
-                {activeSection === 'sec_6_3'
+                {activeSection === 'sec_6_4_6_6'
+                  ? 'Diccionario de 11 entidades en 3FN, flujo de secuencia ACID para matrícula académica con bloqueo pesimista de cupo (SELECT ... FOR UPDATE) y matriz de cobertura 100% de requisitos funcionales (RF) y no funcionales (RNF).'
+                  : activeSection === 'sec_6_3'
                   ? 'Mapeo estricto de la Arquitectura en Capas hacia nodos físicos/cloud aislados en subredes privadas. RNF-01 (Seguridad), RNF-02 (Rendimiento 300 concurr. < 3s), RNF-03 (Disponibilidad 99.5% Multi-AZ), RNF-04 (Escalabilidad) y RNF-09 (Respaldo Off-Site).'
                   : activeSection === 'sec_6_2'
                   ? 'Descomposición formal en 5 capas: Presentación, Controladores API, Lógica de Negocio, Acceso a Datos y Servicios Transversales. Orquestación ACID para Matrícula (RF-07), Notas (RF-08), RBAC (RF-02) y Auditoría (RF-12).'
@@ -259,16 +292,30 @@ export default function App() {
             <div className="flex items-center gap-3">
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs">
                 <span className="text-slate-400 block text-[11px] font-semibold">
-                  {activeSection === 'sec_6_3' ? 'Topología de Red' : 'Estilo Arquitectónico'}
+                  {activeSection === 'sec_6_4_6_6'
+                    ? 'Entidades Normalizadas'
+                    : activeSection === 'sec_6_3'
+                    ? 'Topología de Red'
+                    : 'Estilo Arquitectónico'}
                 </span>
                 <span className="font-bold text-slate-900 font-mono">
-                  {activeSection === 'sec_6_3' ? 'VPC Multi-Subnet Multi-AZ' : 'N-Tier / Clean Architecture'}
+                  {activeSection === 'sec_6_4_6_6'
+                    ? '11 Tablas 3FN (PostgreSQL)'
+                    : activeSection === 'sec_6_3'
+                    ? 'VPC Multi-Subnet Multi-AZ'
+                    : 'N-Tier / Clean Architecture'}
                 </span>
               </div>
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs">
-                <span className="text-slate-400 block text-[11px] font-semibold">Continuidad &amp; SLA</span>
+                <span className="text-slate-400 block text-[11px] font-semibold">
+                  {activeSection === 'sec_6_4_6_6' ? 'Trazabilidad Total' : 'Continuidad &amp; SLA'}
+                </span>
                 <span className="font-bold text-slate-900 font-mono">
-                  {activeSection === 'sec_6_3' ? 'RPO <= 1h · RTO <= 4h (99.5%)' : 'p95 <= 3.0s (300 concurr.)'}
+                  {activeSection === 'sec_6_4_6_6'
+                    ? '24 / 24 Requerimientos (100%)'
+                    : activeSection === 'sec_6_3'
+                    ? 'RPO <= 1h · RTO <= 4h (99.5%)'
+                    : 'p95 <= 3.0s (300 concurr.)'}
                 </span>
               </div>
             </div>
@@ -278,7 +325,9 @@ export default function App() {
 
       {/* Main Content Viewport */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full">
-        {activeSection === 'sec_6_3' ? (
+        {activeSection === 'sec_6_4_6_6' ? (
+          <DataAndSequenceView />
+        ) : activeSection === 'sec_6_3' ? (
           <DeploymentView />
         ) : activeSection === 'sec_6_2' ? (
           <ComponentsView />
@@ -324,9 +373,9 @@ export default function App() {
           <div className="flex items-center gap-2">
             <span className="font-bold text-slate-800">Sistema de Gestión Académica (SGA)</span>
             <span aria-hidden="true">·</span>
-            <span>Documento de Arquitectura de Software (Secciones 6.1, 6.2 &amp; 6.3)</span>
+            <span>Documento de Arquitectura de Software (Secciones 6.1 a 6.6)</span>
             <span aria-hidden="true">·</span>
-            <span>Versión 2.4</span>
+            <span>Versión 3.0</span>
           </div>
           <div className="text-slate-400 text-[11px] font-mono">
             Conforme a ISO/IEC/IEEE 42010:2011 &amp; IEEE Std 1016-2009
